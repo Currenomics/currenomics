@@ -1,6 +1,6 @@
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
-from dags.module.airflow.time import get_ds_nodash
+from module.airflow.time import get_ds_nodash
 
 
 def delete_object(snowflake_table: str, **kwargs):

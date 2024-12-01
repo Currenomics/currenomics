@@ -3,7 +3,7 @@ from io import StringIO
 import pandas as pd
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
-from dags.module.airflow.time import get_ds_nodash
+from module.airflow.time import get_ds_nodash
 
 
 def upload_csv_to_S3(data: pd.DataFrame, is_tmp: bool, snowflake_table: str, kwargs):

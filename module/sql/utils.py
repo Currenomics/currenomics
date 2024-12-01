@@ -1,5 +1,5 @@
-from dags.module.sql.sql_loader import load_sql
-from dags.module.util.vo.table_info import TableInfo
+from module.sql.sql_loader import load_sql
+from module.util.vo.table_info import TableInfo
 
 
 def get_create_table_sql(table_info: TableInfo) -> str:

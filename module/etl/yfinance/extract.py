@@ -1,6 +1,6 @@
 import yfinance as yf
 
-from dags.module.airflow.aws.s3.upload import upload_csv_to_S3
+from module.airflow.aws.s3.upload import upload_csv_to_S3
 
 
 def yf_extract(SNOWFLAKE_TABLE, **kwargs):

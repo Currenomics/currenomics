@@ -5,11 +5,11 @@ from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 
-from dags.module.sql.sql_loader import load_sql
 from module.airflow.aws.s3.delete import delete_object
 from module.airflow.aws.s3.transform import transform_tmp_object
 from module.aws.aws_credential import AwsCredentialInfo
 from module.etl.yfinance.extract import yf_extract
+from module.sql.sql_loader import load_sql
 from module.sql.utils import get_create_table_sql
 from module.util.vo.table_info import TableInfo
 
