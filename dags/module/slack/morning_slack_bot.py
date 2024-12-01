@@ -1,19 +1,17 @@
-import json
 import logging
+
+import snowflake.connector
+from airflow.hooks.base import BaseHook
+from airflow.models import Variable
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk.models.blocks import SectionBlock, ActionsBlock, ButtonElement
-import snowflake.connector
-from datetime import datetime
-import yfinance as yf
-from airflow.models import Variable
-from airflow.hooks.base import BaseHook
 
 # 슬랙 채널 ID 설정
-TARGET_CHANNEL_ID = 'C082FEQMW0K'
+TARGET_CHANNEL_ID = "C082FEQMW0K"
 
-app = App(token=Variable.get('SLACK_BOT_TOKEN'))
-handler = SocketModeHandler(app, Variable.get('SLACK_APP_TOKEN'))
+app = App(token=Variable.get("SLACK_BOT_TOKEN"))
+handler = SocketModeHandler(app, Variable.get("SLACK_APP_TOKEN"))
 
 # 사용자 상태 저장
 user_states = {}
@@ -22,54 +20,43 @@ user_states = {}
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def connect_to_snowflake():
     try:
-        conn = BaseHook.get_connection('snowflake_conn_id')
+        conn = BaseHook.get_connection("snowflake_conn_id")
         snowflake_config = {
-            'user': conn.login,
-            'password': conn.password,
-            'account': conn.extra_dejson.get('account'),
-            'warehouse': conn.extra_dejson.get('warehouse'),
-            'database': conn.schema,
-            'schema': conn.extra_dejson.get('schema')
+            "user": conn.login,
+            "password": conn.password,
+            "account": conn.extra_dejson.get("account"),
+            "warehouse": conn.extra_dejson.get("warehouse"),
+            "database": conn.schema,
+            "schema": conn.extra_dejson.get("schema"),
         }
         return snowflake.connector.connect(**snowflake_config)
     except Exception as e:
         logger.error(f"Snowflake 연결 오류: {e}")
         raise
 
+
 def reset_user_state(user_id):
     if user_id in user_states:
         del user_states[user_id]
 
+
 def display_initial_options(say):
     blocks = [
-        SectionBlock(
-            block_id="section1",
-            text="어떤 정보를 확인하시겠습니까?"
-        ),
+        SectionBlock(block_id="section1", text="어떤 정보를 확인하시겠습니까?"),
         ActionsBlock(
             block_id="actions1",
             elements=[
-                ButtonElement(
-                    text="최근 주요 국가 환율",
-                    action_id="button_daily_rate",
-                    value="daily_rate"
-                ),
-                ButtonElement(
-                    text="S&P 500 지수",
-                    action_id="button_sp500",
-                    value="sp500"
-                ),
-                ButtonElement(
-                    text="원유 가격 (브렌트 유)",
-                    action_id="button_crude_oil",
-                    value="crude_oil"
-                )
-            ]
-        )
+                ButtonElement(text="최근 주요 국가 환율", action_id="button_daily_rate", value="daily_rate"),
+                ButtonElement(text="S&P 500 지수", action_id="button_sp500", value="sp500"),
+                ButtonElement(text="원유 가격 (브렌트 유)", action_id="button_crude_oil", value="crude_oil"),
+            ],
+        ),
     ]
     say(blocks=blocks)
+
 
 def get_historical_rates():
     conn = connect_to_snowflake()
@@ -101,6 +88,7 @@ def get_historical_rates():
     finally:
         conn.close()
 
+
 def get_sp500_data():
     conn = connect_to_snowflake()
     try:
@@ -129,6 +117,7 @@ def get_sp500_data():
         return None
     finally:
         conn.close()
+
 
 def get_crude_oil_data():
     conn = connect_to_snowflake()
@@ -159,20 +148,23 @@ def get_crude_oil_data():
     finally:
         conn.close()
 
+
 def handle_event(event, say, logger):
-    user_id = event['user']
-    channel_id = event['channel']
+    user_id = event["user"]
+    channel_id = event["channel"]
 
     if channel_id != TARGET_CHANNEL_ID:
         return
 
-    if user_id not in user_states and event['type'] == 'app_mention':
+    if user_id not in user_states and event["type"] == "app_mention":
         display_initial_options(say)
-        user_states[user_id] = 'waiting_for_selection'
+        user_states[user_id] = "waiting_for_selection"
+
 
 @app.event("app_mention")
 def handle_app_mention_events(body, say, logger):
-    handle_event(body['event'], say, logger)
+    handle_event(body["event"], say, logger)
+
 
 @app.action("button_daily_rate")
 def handle_daily_rate(ack, body, say):
@@ -183,10 +175,13 @@ def handle_daily_rate(ack, body, say):
         for rate in rates:
             # rate[0]은 DATE, rate[1]은 CURRENCY, rate[2]는 CLOSE, rate[3]은 change_rate
             change_symbol = "▲" if rate[3] > 0 else "▼"
-            message += f"{rate[0].strftime('%Y-%m-%d')} - {rate[1]}: {rate[2]:.2f} ({change_symbol}{abs(rate[3]):.2f}%)\n"
+            message += (
+                f"{rate[0].strftime('%Y-%m-%d')} - {rate[1]}: {rate[2]:.2f} ({change_symbol}{abs(rate[3]):.2f}%)\n"
+            )
         say(message)
     else:
         say("일간 환율 정보를 가져오는데 실패했습니다.")
+
 
 @app.action("button_sp500")
 def handle_sp500(ack, body, say):
@@ -202,6 +197,7 @@ def handle_sp500(ack, body, say):
     else:
         say("S&P 500 데이터를 가져오는데 실패했습니다.")
 
+
 @app.action("button_crude_oil")
 def handle_crude_oil(ack, body, say):
     ack()
@@ -215,6 +211,7 @@ def handle_crude_oil(ack, body, say):
         say(message)
     else:
         say("원유 가격 데이터를 가져오는데 실패했습니다.")
+
 
 if __name__ == "__main__":
     handler.start()
